@@ -613,29 +613,6 @@ $('locate-btn').addEventListener('click', async () => {
   const btn = $('locate-btn');
   btn.classList.add('locating');
 
-  const isNative = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
-  const hasGeo   = !!(window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Geolocation);
-  const hasNav   = !!navigator.geolocation;
-  showError(`Debug: native=${isNative} capGeo=${hasGeo} navGeo=${hasNav}`);
-  btn.classList.remove('locating');
-  return; // TEMP: remove after debugging
-
-  // On iOS (Capacitor), use the native Geolocation plugin directly
-  const CapGeo = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Geolocation;
-  if (CapGeo) {
-    try {
-      await CapGeo.requestPermissions();
-      const pos = await CapGeo.getCurrentPosition({ enableHighAccuracy: true, timeout: 10000 });
-      btn.classList.remove('locating');
-      await handlePosition(pos.coords.latitude, pos.coords.longitude);
-    } catch (err) {
-      btn.classList.remove('locating');
-      showError(err.message && err.message.includes('denied') ? 'Platsåtkomst nekad.' : 'Kunde inte fastställa din plats.');
-    }
-    return;
-  }
-
-  // Web fallback
   if (!navigator.geolocation) { btn.classList.remove('locating'); showError('Platsinformation stöds inte av din webbläsare.'); return; }
   navigator.geolocation.getCurrentPosition(
     async pos => {
