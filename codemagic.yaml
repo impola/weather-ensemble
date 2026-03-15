@@ -43,6 +43,8 @@ workflows:
           /usr/libexec/PlistBuddy -c "Set :NSLocationWhenInUseUsageDescription 'Weather Ensemble needs your location to show local weather.'" "$PLIST"
           /usr/libexec/PlistBuddy -c "Add :NSLocationAlwaysAndWhenInUseUsageDescription string 'Weather Ensemble needs your location to show local weather.'" "$PLIST" || \
           /usr/libexec/PlistBuddy -c "Set :NSLocationAlwaysAndWhenInUseUsageDescription 'Weather Ensemble needs your location to show local weather.'" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Add :ITSAppUsesNonExemptEncryption bool false" "$PLIST" || \
+          /usr/libexec/PlistBuddy -c "Set :ITSAppUsesNonExemptEncryption false" "$PLIST"
 
       - name: Install CocoaPods
         script: cd ios/App && pod install
