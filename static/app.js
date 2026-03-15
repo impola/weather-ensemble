@@ -542,6 +542,7 @@ function renderTempTable(data, range) {
     table.appendChild(tbody);
   } else {
     const hours = range === '12h' ? 12 : range === '24h' ? 24 : 48;
+    const step  = range === '12h' ?  2 : range === '24h' ?  4 :  6;
     const start = currentHourIndex(data);
     table.innerHTML = `<thead><tr>
       <th>Time</th><th>Temp</th><th>Max</th><th>Min</th><th>Precip</th>
@@ -552,7 +553,7 @@ function renderTempTable(data, range) {
     const maxes  = (data.hourly.max  || []).slice(start, start + hours);
     const mins   = (data.hourly.min  || []).slice(start, start + hours);
     const precip = (data.hourly.precip || []).slice(start, start + hours);
-    times.forEach((t, i) => {
+    times.filter((_, i) => i % step === 0).forEach((t, j) => { const i = j * step;
       const tr = document.createElement('tr');
       tr.innerHTML = `
         <td class="td-time">${formatHour(t)}</td>
