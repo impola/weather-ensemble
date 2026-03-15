@@ -542,7 +542,7 @@ function renderTempTable(data, range) {
     table.appendChild(tbody);
   } else {
     const hours = range === '12h' ? 12 : range === '24h' ? 24 : 48;
-    const step  = range === '12h' ?  2 : range === '24h' ?  4 :  6;
+    const step  = range === '12h' ?  1 : range === '24h' ?  2 :  4;
     const start = currentHourIndex(data);
     table.innerHTML = `<thead><tr>
       <th>Time</th><th>Temp</th><th>Max</th><th>Min</th><th>Precip</th>
