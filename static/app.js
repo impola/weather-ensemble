@@ -613,6 +613,10 @@ $('locate-btn').addEventListener('click', async () => {
   const btn = $('locate-btn');
   btn.classList.add('locating');
 
+  const hasGeo = !!navigator.geolocation;
+  const isSecure = location.protocol === 'https:' || location.protocol === 'capacitor:' || location.hostname === 'localhost';
+  alert(`Debug: geo=${hasGeo} secure=${isSecure} proto=${location.protocol} host=${location.hostname}`);
+
   if (!navigator.geolocation) { btn.classList.remove('locating'); showError('Platsinformation stöds inte av din webbläsare.'); return; }
   navigator.geolocation.getCurrentPosition(
     async pos => {
@@ -621,6 +625,7 @@ $('locate-btn').addEventListener('click', async () => {
     },
     err => {
       btn.classList.remove('locating');
+      alert(`Geo fel: kod=${err.code} msg=${err.message}`);
       showError(err.code === 1 ? 'Platsåtkomst nekad.' : 'Kunde inte fastställa din plats.');
     },
     { timeout: 10000 }
