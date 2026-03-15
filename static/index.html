@@ -133,24 +133,6 @@
   </div>
 
   <script src="chart.umd.min.js"></script>
-  <script>
-    // Use Capacitor Geolocation plugin on iOS (navigator.geolocation unreliable in WKWebView)
-    document.addEventListener('deviceready', function() {}, false);
-    window.addEventListener('load', function() {
-      if (window.Capacitor && window.Capacitor.isNativePlatform()) {
-        const Geo = window.Capacitor.Plugins.Geolocation;
-        if (Geo) {
-          navigator.geolocation = {
-            getCurrentPosition: function(success, error, opts) {
-              Geo.getCurrentPosition(opts || {}).then(function(pos) {
-                success({ coords: { latitude: pos.coords.latitude, longitude: pos.coords.longitude } });
-              }).catch(function(err) { if (error) error(err); });
-            }
-          };
-        }
-      }
-    });
-  </script>
-  <script src="app.js"></script>
+<script src="app.js"></script>
 </body>
 </html>

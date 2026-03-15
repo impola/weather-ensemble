@@ -596,24 +596,44 @@ function switchUnit(u) {
 }
 
 /* ── Geolocation ────────────────────────────────────────── */
-$('locate-btn').addEventListener('click', () => {
-  if (!navigator.geolocation) { showError('Platsinformation stöds inte av din webbläsare.'); return; }
+async function handlePosition(lat, lon) {
+  try {
+    const res  = await fetch(`/api/reverse?lat=${lat}&lon=${lon}`);
+    const loc  = res.ok ? await res.json() : {};
+    const name = loc.name ? `${loc.name}, ${loc.country}` : `${lat.toFixed(2)}, ${lon.toFixed(2)}`;
+    searchInput.value = name;
+    loadWeather(lat, lon, name);
+  } catch {
+    searchInput.value = `${lat.toFixed(2)}, ${lon.toFixed(2)}`;
+    loadWeather(lat, lon, searchInput.value);
+  }
+}
+
+$('locate-btn').addEventListener('click', async () => {
   const btn = $('locate-btn');
   btn.classList.add('locating');
+
+  // On iOS (Capacitor), use the native Geolocation plugin directly
+  const CapGeo = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Geolocation;
+  if (CapGeo) {
+    try {
+      await CapGeo.requestPermissions();
+      const pos = await CapGeo.getCurrentPosition({ enableHighAccuracy: true, timeout: 10000 });
+      btn.classList.remove('locating');
+      await handlePosition(pos.coords.latitude, pos.coords.longitude);
+    } catch (err) {
+      btn.classList.remove('locating');
+      showError(err.message && err.message.includes('denied') ? 'Platsåtkomst nekad.' : 'Kunde inte fastställa din plats.');
+    }
+    return;
+  }
+
+  // Web fallback
+  if (!navigator.geolocation) { btn.classList.remove('locating'); showError('Platsinformation stöds inte av din webbläsare.'); return; }
   navigator.geolocation.getCurrentPosition(
     async pos => {
       btn.classList.remove('locating');
-      const { latitude: lat, longitude: lon } = pos.coords;
-      try {
-        const res  = await fetch(`/api/reverse?lat=${lat}&lon=${lon}`);
-        const loc  = res.ok ? await res.json() : {};
-        const name = loc.name ? `${loc.name}, ${loc.country}` : `${lat.toFixed(2)}, ${lon.toFixed(2)}`;
-        searchInput.value = name;
-        loadWeather(lat, lon, name);
-      } catch {
-        searchInput.value = `${lat.toFixed(2)}, ${lon.toFixed(2)}`;
-        loadWeather(lat, lon, searchInput.value);
-      }
+      await handlePosition(pos.coords.latitude, pos.coords.longitude);
     },
     err => {
       btn.classList.remove('locating');
