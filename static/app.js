@@ -332,6 +332,16 @@ function renderForecast(forecast) {
   });
 }
 
+/* ── Find current hour index in hourly data ─────────────── */
+function currentHourIndex(data) {
+  const offsetMs = (data.utc_offset_seconds || 0) * 1000;
+  const localNow = new Date(Date.now() + offsetMs + new Date().getTimezoneOffset() * 60000);
+  const pad = n => String(n).padStart(2, '0');
+  const nowStr = `${localNow.getFullYear()}-${pad(localNow.getMonth()+1)}-${pad(localNow.getDate())}T${pad(localNow.getHours())}:00`;
+  const idx = data.hourly.times.findIndex(t => t >= nowStr);
+  return idx >= 0 ? idx : 0;
+}
+
 /* ── Temperature chart ──────────────────────────────────── */
 function buildChartData(data, range) {
   const gridColor  = 'rgba(46,51,80,0.8)';
@@ -380,16 +390,17 @@ function buildChartData(data, range) {
     return { labels, datasets, gridColor, tickColor, showPrecip: false };
   }
 
-  // Hourly view (24h or 48h)
+  // Hourly view (12h, 24h or 48h) — start from current hour
   const hours  = range === '12h' ? 12 : range === '24h' ? 24 : 48;
-  const times  = data.hourly.times.slice(0, hours);
+  const start  = currentHourIndex(data);
+  const times  = data.hourly.times.slice(start, start + hours);
   const labels = times.map(formatHour);
 
   const datasets = [
     // Precipitation line (secondary axis)
     {
       label:           'Precip (mm)',
-      data:            (data.hourly.precip || []).slice(0, hours),
+      data:            (data.hourly.precip || []).slice(start, start + hours),
       borderColor:     'rgba(79,142,247,0.6)',
       backgroundColor: 'rgba(79,142,247,0.15)',
       borderWidth:     1.5,
@@ -400,15 +411,15 @@ function buildChartData(data, range) {
       order:           1,
     },
     // Spread band
-    { label: '_band_upper', data: (data.hourly.max || []).slice(0, hours).map(toUnit),
+    { label: '_band_upper', data: (data.hourly.max || []).slice(start, start + hours).map(toUnit),
       borderWidth: 0, pointRadius: 0, fill: '+1',
       backgroundColor: 'rgba(255,255,255,0.1)', tension: 0.4, yAxisID: 'y' },
-    { label: '_band_lower', data: (data.hourly.min || []).slice(0, hours).map(toUnit),
+    { label: '_band_lower', data: (data.hourly.min || []).slice(start, start + hours).map(toUnit),
       borderWidth: 0, pointRadius: 0, fill: false, tension: 0.4, yAxisID: 'y' },
     // Ensemble (bold white)
     {
       label:           'Temperature',
-      data:            data.hourly.ensemble.slice(0, hours).map(toUnit),
+      data:            data.hourly.ensemble.slice(start, start + hours).map(toUnit),
       borderColor:     '#ffffff',
       borderWidth:     2.5,
       pointRadius:     0,
@@ -531,15 +542,16 @@ function renderTempTable(data, range) {
     table.appendChild(tbody);
   } else {
     const hours = range === '12h' ? 12 : range === '24h' ? 24 : 48;
+    const start = currentHourIndex(data);
     table.innerHTML = `<thead><tr>
       <th>Time</th><th>Temp</th><th>Max</th><th>Min</th><th>Precip</th>
     </tr></thead>`;
     const tbody = document.createElement('tbody');
-    const times  = data.hourly.times.slice(0, hours);
-    const temps  = data.hourly.ensemble.slice(0, hours);
-    const maxes  = (data.hourly.max  || []).slice(0, hours);
-    const mins   = (data.hourly.min  || []).slice(0, hours);
-    const precip = (data.hourly.precip || []).slice(0, hours);
+    const times  = data.hourly.times.slice(start, start + hours);
+    const temps  = data.hourly.ensemble.slice(start, start + hours);
+    const maxes  = (data.hourly.max  || []).slice(start, start + hours);
+    const mins   = (data.hourly.min  || []).slice(start, start + hours);
+    const precip = (data.hourly.precip || []).slice(start, start + hours);
     times.forEach((t, i) => {
       const tr = document.createElement('tr');
       tr.innerHTML = `
