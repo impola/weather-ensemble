@@ -7,9 +7,6 @@ workflows:
     environment:
       groups:
         - aaa
-      ios_signing:
-        distribution_type: app_store
-        bundle_identifier: com.weatherensemble.app
       vars:
         XCODE_SCHEME: App
         BUNDLE_ID: com.weatherensemble.app
@@ -27,6 +24,18 @@ workflows:
 
       - name: Sync Capacitor
         script: npx cap sync ios
+
+      - name: Set up keychain
+        script: keychain initialize
+
+      - name: Fetch signing files
+        script: |
+          app-store-connect fetch-signing-files "$BUNDLE_ID" \
+            --type IOS_APP_STORE \
+            --create
+
+      - name: Add certificates to keychain
+        script: keychain add-certificates
 
       - name: Install CocoaPods
         script: cd ios/App && pod install
@@ -64,4 +73,4 @@ workflows:
         key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER
         issuer_id: $APP_STORE_CONNECT_ISSUER_ID
         submit_to_testflight: true
-        submit_to_app_store: false   # set to true when ready for full release
+        submit_to_app_store: false
