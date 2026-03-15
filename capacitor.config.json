@@ -3,7 +3,7 @@
   "appName": "Weather Ensemble",
   "webDir": "static",
   "server": {
-    "url": "REPLACE_WITH_RAILWAY_URL",
+    "url": "https://weather-ensemble-production.up.railway.app",
     "cleartext": false,
     "allowNavigation": ["*.open-meteo.com"]
   },
