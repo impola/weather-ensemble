@@ -18,9 +18,8 @@ workflows:
 
       - name: Add iOS platform
         script: |
-          if [ ! -d "ios" ]; then
-            npx cap add ios
-          fi
+          rm -rf ios
+          npx cap add ios
 
       - name: Sync Capacitor
         script: npx cap sync ios

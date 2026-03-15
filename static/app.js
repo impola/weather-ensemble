@@ -628,7 +628,7 @@ $('locate-btn').addEventListener('click', async () => {
       alert(`Geo fel: kod=${err.code} msg=${err.message}`);
       showError(err.code === 1 ? 'Platsåtkomst nekad.' : 'Kunde inte fastställa din plats.');
     },
-    { timeout: 10000 }
+    { timeout: 30000, enableHighAccuracy: true }
   );
 });
 
