@@ -613,6 +613,13 @@ $('locate-btn').addEventListener('click', async () => {
   const btn = $('locate-btn');
   btn.classList.add('locating');
 
+  const isNative = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+  const hasGeo   = !!(window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Geolocation);
+  const hasNav   = !!navigator.geolocation;
+  showError(`Debug: native=${isNative} capGeo=${hasGeo} navGeo=${hasNav}`);
+  btn.classList.remove('locating');
+  return; // TEMP: remove after debugging
+
   // On iOS (Capacitor), use the native Geolocation plugin directly
   const CapGeo = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Geolocation;
   if (CapGeo) {
