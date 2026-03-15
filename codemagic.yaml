@@ -37,25 +37,6 @@ workflows:
       - name: Add certificates to keychain
         script: keychain add-certificates
 
-      - name: Patch ViewController to grant WKWebView geolocation permission
-        script: |
-          python3 - << 'EOF'
-          path = 'ios/App/App/ViewController.swift'
-          with open(path) as f:
-              content = f.read()
-          if 'import WebKit' not in content:
-              content = 'import WebKit\n' + content
-          method = """
-              override public func webView(_ webView: WKWebView, requestGeolocationPermissionFor origin: WKSecurityOrigin, initiatedByFrame frame: WKFrameInfo, decisionHandler: @escaping (WKPermissionDecision) -> Void) {
-                  decisionHandler(.grant)
-              }
-          """
-          if 'requestGeolocationPermissionFor' not in content:
-              content = content.rstrip().rstrip('}') + method + '\n}'
-          with open(path, 'w') as f:
-              f.write(content)
-          EOF
-
       - name: Add location permissions to Info.plist
         script: |
           PLIST="ios/App/App/Info.plist"

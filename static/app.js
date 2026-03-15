@@ -96,7 +96,7 @@ $('search-btn').addEventListener('click', () => {
 
 async function fetchSuggestions(q) {
   try {
-    const res  = await fetch(`/api/geocode?q=${encodeURIComponent(q)}`);
+    const res  = await fetch(`https://weather-ensemble-production.up.railway.app/api/geocode?q=${encodeURIComponent(q)}`);
     if (!res.ok) { suggestionsEl.innerHTML = ''; return; }
     const list = await res.json();
     renderSuggestions(list);
@@ -126,7 +126,7 @@ function renderSuggestions(list) {
 async function triggerSearch(q) {
   if (!q) return;
   try {
-    const res  = await fetch(`/api/geocode?q=${encodeURIComponent(q)}`);
+    const res  = await fetch(`https://weather-ensemble-production.up.railway.app/api/geocode?q=${encodeURIComponent(q)}`);
     if (!res.ok) { showError('Platsen hittades inte.'); return; }
     const list = await res.json();
     if (!list.length) { showError('Platsen hittades inte.'); return; }
@@ -146,7 +146,7 @@ async function loadWeather(lat, lon, name) {
 
   let data;
   try {
-    const url = `/api/weather?lat=${lat}&lon=${lon}&name=${encodeURIComponent(name)}`;
+    const url = `https://weather-ensemble-production.up.railway.app/api/weather?lat=${lat}&lon=${lon}&name=${encodeURIComponent(name)}`;
     const res  = await fetch(url);
     if (!res.ok) { const e = await res.json(); showError(e.detail || 'Kunde inte ladda väderdata.'); return; }
     data = await res.json();
@@ -598,7 +598,7 @@ function switchUnit(u) {
 /* ── Geolocation ────────────────────────────────────────── */
 async function handlePosition(lat, lon) {
   try {
-    const res  = await fetch(`/api/reverse?lat=${lat}&lon=${lon}`);
+    const res  = await fetch(`https://weather-ensemble-production.up.railway.app/api/reverse?lat=${lat}&lon=${lon}`);
     const loc  = res.ok ? await res.json() : {};
     const name = loc.name ? `${loc.name}, ${loc.country}` : `${lat.toFixed(2)}, ${lon.toFixed(2)}`;
     searchInput.value = name;
