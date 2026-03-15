@@ -1,0 +1,14 @@
+{
+  "appId": "com.weatherensemble.app",
+  "appName": "Weather Ensemble",
+  "webDir": "static",
+  "server": {
+    "url": "REPLACE_WITH_RAILWAY_URL",
+    "cleartext": false,
+    "allowNavigation": ["*.open-meteo.com"]
+  },
+  "ios": {
+    "contentInset": "always",
+    "backgroundColor": "#0f1117"
+  }
+}
