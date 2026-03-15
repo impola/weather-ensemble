@@ -37,6 +37,14 @@ workflows:
       - name: Add certificates to keychain
         script: keychain add-certificates
 
+      - name: Add location permissions to Info.plist
+        script: |
+          PLIST="ios/App/App/Info.plist"
+          /usr/libexec/PlistBuddy -c "Add :NSLocationWhenInUseUsageDescription string 'Weather Ensemble needs your location to show local weather.'" "$PLIST" || \
+          /usr/libexec/PlistBuddy -c "Set :NSLocationWhenInUseUsageDescription 'Weather Ensemble needs your location to show local weather.'" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Add :NSLocationAlwaysAndWhenInUseUsageDescription string 'Weather Ensemble needs your location to show local weather.'" "$PLIST" || \
+          /usr/libexec/PlistBuddy -c "Set :NSLocationAlwaysAndWhenInUseUsageDescription 'Weather Ensemble needs your location to show local weather.'" "$PLIST"
+
       - name: Install CocoaPods
         script: cd ios/App && pod install
 
