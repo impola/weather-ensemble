@@ -8,6 +8,9 @@ let chartRange     = '12h';
 
 const LS_KEY = 'weather_last_location';
 
+const CONF_SV = { High: 'Hög', Medium: 'Medel', Low: 'Låg' };
+const confLabel = c => CONF_SV[c] || c;
+
 const MODEL_COLORS = {
   ECMWF: '#4f8ef7',
   GFS:   '#34d08b',
@@ -26,13 +29,13 @@ function tempStr(c) {
 
 function formatDate(dateStr) {
   const d = new Date(dateStr + 'T12:00:00');
-  return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+  return d.toLocaleDateString('sv-SE', { weekday: 'short', month: 'short', day: 'numeric' });
 }
 
 function formatHour(isoStr) {
   const d = new Date(isoStr);
   const h = d.getHours();
-  if (h === 0) return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  if (h === 0) return d.toLocaleDateString('sv-SE', { month: 'short', day: 'numeric' });
   return `${h}:00`;
 }
 
@@ -124,13 +127,13 @@ async function triggerSearch(q) {
   if (!q) return;
   try {
     const res  = await fetch(`/api/geocode?q=${encodeURIComponent(q)}`);
-    if (!res.ok) { showError('Location not found.'); return; }
+    if (!res.ok) { showError('Platsen hittades inte.'); return; }
     const list = await res.json();
-    if (!list.length) { showError('Location not found.'); return; }
+    if (!list.length) { showError('Platsen hittades inte.'); return; }
     const loc = list[0];
     loadWeather(loc.lat, loc.lon, `${loc.name}${loc.country ? ', ' + loc.country : ''}`);
   } catch (err) {
-    showError('Could not reach the server.');
+    showError('Kunde inte nå servern.');
   }
 }
 
@@ -145,10 +148,10 @@ async function loadWeather(lat, lon, name) {
   try {
     const url = `/api/weather?lat=${lat}&lon=${lon}&name=${encodeURIComponent(name)}`;
     const res  = await fetch(url);
-    if (!res.ok) { const e = await res.json(); showError(e.detail || 'Failed to load weather.'); return; }
+    if (!res.ok) { const e = await res.json(); showError(e.detail || 'Kunde inte ladda väderdata.'); return; }
     data = await res.json();
   } catch {
-    showError('Network error — check your connection.');
+    showError('Nätverksfel — kontrollera din anslutning.');
     return;
   } finally {
     showLoading(false);
@@ -171,7 +174,7 @@ function renderWeather(data) {
 
   // Location & time
   $('location-name').textContent = data.location_name || 'Unknown';
-  $('location-time').textContent = new Date().toLocaleString('en-US', {
+  $('location-time').textContent = new Date().toLocaleString('sv-SE', {
     weekday: 'long', hour: '2-digit', minute: '2-digit',
     timeZone: data.timezone || undefined,
   });
@@ -188,7 +191,7 @@ function renderWeather(data) {
   $('models-used').textContent  = data.models_used.join(', ');
 
   const badge = $('confidence');
-  badge.textContent  = cur.confidence;
+  badge.textContent  = confLabel(cur.confidence);
   badge.className    = `confidence-badge confidence-${cur.confidence}`;
 
   // Model breakdown
@@ -325,7 +328,7 @@ function renderForecast(forecast) {
       <span class="fc-max">${tempStr(day.temp_max)}</span>
       <span class="fc-min">${tempStr(day.temp_min)}</span>
       <span class="fc-badge">
-        <span class="confidence-badge confidence-${day.confidence}" title="Model agreement">${day.confidence}</span>
+        <span class="confidence-badge confidence-${day.confidence}" title="Modelöverensstämmelse">${confLabel(day.confidence)}</span>
       </span>
     `;
     list.appendChild(row);
@@ -348,7 +351,7 @@ function buildChartData(data, range) {
   const tickColor  = '#8890aa';
 
   if (range === '7day') {
-    const labels = data.forecast.map((d, i) => i === 0 ? 'Today' : formatDate(d.date));
+    const labels = data.forecast.map((d, i) => i === 0 ? 'Idag' : formatDate(d.date));
 
     const bandUpper = data.forecast.map(d => {
       const vals = Object.values(d.by_model).map(m => m.temp_max).filter(v => v != null);
@@ -521,21 +524,21 @@ function renderTempTable(data, range) {
   if (range === '7day') {
     table.innerHTML = `<thead><tr>
       <th>Day</th><th>Icon</th><th>Condition</th>
-      <th>High</th><th>Low</th><th>Precip</th><th>Rain %</th><th>Confidence</th>
+      <th>Max</th><th>Min</th><th>Nederbörd</th><th>Regn %</th><th>Tillförlitlighet</th>
     </tr></thead>`;
     const tbody = document.createElement('tbody');
     data.forecast.forEach((d, i) => {
       const tr = document.createElement('tr');
       const pp = d.precipitation_probability ?? 0;
       tr.innerHTML = `
-        <td class="td-time">${i === 0 ? 'Today' : formatDate(d.date)}</td>
+        <td class="td-time">${i === 0 ? 'Idag' : formatDate(d.date)}</td>
         <td>${d.weather.icon}</td>
         <td>${d.weather.description}</td>
         <td class="td-temp">${tempStr(d.temp_max)}</td>
         <td class="td-spread">${tempStr(d.temp_min)}</td>
         <td class="td-precip">${d.precipitation != null ? d.precipitation + ' mm' : '—'}</td>
         <td class="td-precip">${Math.round(pp)}%</td>
-        <td><span class="confidence-badge confidence-${d.confidence}">${d.confidence}</span></td>
+        <td><span class="confidence-badge confidence-${d.confidence}">${confLabel(d.confidence)}</span></td>
       `;
       tbody.appendChild(tr);
     });
@@ -545,7 +548,7 @@ function renderTempTable(data, range) {
     const step  = range === '12h' ?  1 : range === '24h' ?  2 :  4;
     const start = currentHourIndex(data);
     table.innerHTML = `<thead><tr>
-      <th>Time</th><th>Temp</th><th>Max</th><th>Min</th><th>Precip</th>
+      <th>Tid</th><th>Temp</th><th>Max</th><th>Min</th><th>Nederbörd</th>
     </tr></thead>`;
     const tbody = document.createElement('tbody');
     const times  = data.hourly.times.slice(start, start + hours);
@@ -594,7 +597,7 @@ function switchUnit(u) {
 
 /* ── Geolocation ────────────────────────────────────────── */
 $('locate-btn').addEventListener('click', () => {
-  if (!navigator.geolocation) { showError('Geolocation is not supported by your browser.'); return; }
+  if (!navigator.geolocation) { showError('Platsinformation stöds inte av din webbläsare.'); return; }
   const btn = $('locate-btn');
   btn.classList.add('locating');
   navigator.geolocation.getCurrentPosition(
@@ -614,7 +617,7 @@ $('locate-btn').addEventListener('click', () => {
     },
     err => {
       btn.classList.remove('locating');
-      showError(err.code === 1 ? 'Location access denied.' : 'Could not determine your location.');
+      showError(err.code === 1 ? 'Platsåtkomst nekad.' : 'Kunde inte fastställa din plats.');
     },
     { timeout: 10000 }
   );
