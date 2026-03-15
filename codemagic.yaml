@@ -50,7 +50,6 @@ workflows:
 
       - name: Set build number
         script: |
-          BUILD_NUMBER=$(($(app-store-connect get-latest-testflight-build-number "$BUNDLE_ID") + 1))
           cd ios/App
           agvtool new-version -all "$BUILD_NUMBER"
 
