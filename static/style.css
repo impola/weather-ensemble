@@ -574,6 +574,28 @@ body {
 
 .yt-wi-cell { text-align: right; color: var(--text-dim); white-space: nowrap; }
 
+/* expandable chevron */
+.yt-chevron {
+  float: right;
+  color: var(--text-dim);
+  font-size: 1rem;
+  display: inline-block;
+  transition: transform .2s;
+  margin-left: 6px;
+}
+.yt-row.yt-expanded .yt-chevron { transform: rotate(90deg); }
+
+/* detail row */
+.yt-detail-row td { padding: 0; border-bottom: none; }
+.yt-detail-wrap {
+  padding: 4px 0 16px;
+  height: 180px;
+  position: relative;
+  background: var(--surface2);
+  border-radius: 0 0 10px 10px;
+}
+.yt-detail-wrap canvas { width: 100% !important; height: 100% !important; }
+
 @media (max-width: 480px) {
   .yr-table thead th.yt-pr,
   .yr-table thead th.yt-wi,

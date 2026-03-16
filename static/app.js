@@ -6,6 +6,8 @@ let modelChart     = null;
 let activeModel    = null;
 let chartRange     = '24h';
 let forecastView   = 'tabell';
+const dayCharts    = {};
+let expandedDay    = null;
 
 const LS_KEY = 'weather_last_location';
 
@@ -413,6 +415,12 @@ function jsMajority(arr) {
 function renderForecastTable(data) {
   const wrap = $('forecast-tabell');
   if (!wrap) return;
+
+  // Destroy any open day charts from previous render
+  Object.values(dayCharts).forEach(c => c.destroy());
+  Object.keys(dayCharts).forEach(k => delete dayCharts[k]);
+  expandedDay = null;
+
   wrap.innerHTML = '';
 
   const slices  = buildDaySlices(data);
@@ -456,11 +464,13 @@ function renderForecastTable(data) {
     const precT = day.precipitation > 0   ? `<span class="yt-blue">${day.precipitation} mm</span>` : '—';
 
     const tr = document.createElement('tr');
-    tr.className = isToday ? 'yt-today' : '';
+    tr.className = 'yt-row' + (isToday ? ' yt-today' : '');
+    tr.style.cursor = 'pointer';
     tr.innerHTML = `
       <td class="yt-day-cell">
         <strong>${dayLabel}</strong>
         ${i > 0 ? `<br><small class="yt-sub">${day.date.slice(5).replace('-','/')}</small>` : ''}
+        <span class="yt-chevron">›</span>
       </td>
       ${cell(s.natt,   pastNatt)}
       ${cell(s.morgen, pastMorgen)}
@@ -474,11 +484,117 @@ function renderForecastTable(data) {
       <td class="yt-pr-cell">${precT}</td>
       <td class="yt-wi-cell">${wind}</td>
     `;
+
+    // Detail row with chart
+    const detailTr = document.createElement('tr');
+    detailTr.id        = `yt-detail-${day.date}`;
+    detailTr.className = 'yt-detail-row';
+    detailTr.hidden    = true;
+    detailTr.innerHTML = `<td colspan="8">
+      <div class="yt-detail-wrap">
+        <canvas id="day-canvas-${day.date}"></canvas>
+      </div>
+    </td>`;
+
+    tr.addEventListener('click', () => toggleDayDetail(day.date, data));
+
     tbody.appendChild(tr);
+    tbody.appendChild(detailTr);
   });
 
   table.appendChild(tbody);
   wrap.appendChild(table);
+}
+
+/* ── Day detail expand/collapse ─────────────────────────── */
+function toggleDayDetail(dateStr, data) {
+  const detailRow = document.getElementById(`yt-detail-${dateStr}`);
+  if (!detailRow) return;
+
+  // Collapse previously open row
+  if (expandedDay && expandedDay !== dateStr) {
+    const prev = document.getElementById(`yt-detail-${expandedDay}`);
+    if (prev) prev.hidden = true;
+    const prevRow = prev?.previousElementSibling;
+    if (prevRow) prevRow.classList.remove('yt-expanded');
+    if (dayCharts[expandedDay]) { dayCharts[expandedDay].destroy(); delete dayCharts[expandedDay]; }
+  }
+
+  const isOpen = !detailRow.hidden;
+  const dayRow = detailRow.previousElementSibling;
+
+  detailRow.hidden = isOpen;
+  if (dayRow) dayRow.classList.toggle('yt-expanded', !isOpen);
+
+  if (!isOpen) {
+    expandedDay = dateStr;
+    // Give the row time to become visible before drawing
+    requestAnimationFrame(() => renderDayChart(dateStr, data));
+  } else {
+    expandedDay = null;
+    if (dayCharts[dateStr]) { dayCharts[dateStr].destroy(); delete dayCharts[dateStr]; }
+  }
+}
+
+function renderDayChart(dateStr, data) {
+  const canvas = document.getElementById(`day-canvas-${dateStr}`);
+  if (!canvas) return;
+
+  const times  = data.hourly.times;
+  const idx    = times.reduce((acc, t, i) => { if (t.startsWith(dateStr)) acc.push(i); return acc; }, []);
+  if (!idx.length) return;
+
+  const labels  = idx.map(i => `${parseInt(times[i].slice(11,13))}:00`);
+  const temps   = idx.map(i => toUnit(data.hourly.ensemble[i]));
+  const precips = idx.map(i => (data.hourly.precip || [])[i] ?? 0);
+
+  const gridColor = 'rgba(46,51,80,0.8)';
+  const tickColor = '#8890aa';
+  const unitLabel = `°${unit}`;
+
+  if (dayCharts[dateStr]) dayCharts[dateStr].destroy();
+
+  dayCharts[dateStr] = new Chart(canvas.getContext('2d'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        { type: 'bar', label: 'Nederbörd (mm)', data: precips,
+          backgroundColor: 'rgba(79,142,247,0.55)', borderWidth: 0,
+          yAxisID: 'y1', order: 1, barPercentage: 0.9, categoryPercentage: 1.0 },
+        { label: 'Temperatur', data: temps,
+          borderColor: '#4f8ef7', borderWidth: 2.5, pointRadius: 2,
+          tension: 0.4, fill: false, yAxisID: 'y', order: 0 },
+      ],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#1a1d27', borderColor: '#2e3350', borderWidth: 1,
+          titleColor: '#e8eaf0', bodyColor: '#8890aa',
+          callbacks: {
+            label: ctx => {
+              const v = ctx.parsed.y;
+              if (ctx.dataset.label === 'Nederbörd (mm)') return ` Nederbörd: ${v} mm`;
+              return ` Temp: ${v}${unitLabel}`;
+            },
+          },
+        },
+      },
+      scales: {
+        x:  { ticks: { color: tickColor, font: { size: 10 } }, grid: { color: gridColor } },
+        y:  { type: 'linear', position: 'left',
+              ticks: { color: tickColor, callback: v => v + unitLabel, font: { size: 10 } },
+              grid: { color: gridColor } },
+        y1: { type: 'linear', position: 'right', beginAtZero: true,
+              ticks: { color: 'rgba(79,142,247,0.7)', callback: v => v + ' mm', font: { size: 10 } },
+              grid: { drawOnChartArea: false } },
+      },
+    },
+  });
 }
 
 function renderForecast(forecast) {
