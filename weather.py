@@ -193,7 +193,7 @@ async def _fetch_model(
             "temperature_2m,apparent_temperature,precipitation,"
             "wind_speed_10m,weather_code,relative_humidity_2m,wind_direction_10m"
         ),
-        "hourly": "temperature_2m,precipitation",
+        "hourly": "temperature_2m,precipitation,weather_code",
         "daily": (
             "temperature_2m_max,temperature_2m_min,precipitation_sum,"
             "wind_speed_10m_max,weather_code,precipitation_probability_max"
@@ -237,6 +237,7 @@ def _normalize_yr(yr_data: dict, utc_offset_seconds: int) -> Optional[dict]:
         hourly_times:  list = []
         hourly_temps:  list = []
         hourly_precip: list = []
+        hourly_codes:  list = []
 
         daily: dict = defaultdict(lambda: {
             "temps": [], "precips": [], "winds": [], "codes": []
@@ -266,6 +267,7 @@ def _normalize_yr(yr_data: dict, utc_offset_seconds: int) -> Optional[dict]:
             hourly_times.append(time_str)
             hourly_temps.append(temp)
             hourly_precip.append(precip if precip is not None else 0.0)
+            hourly_codes.append(_yr_symbol_to_wmo(symbol))
 
             if temp is not None:
                 daily[date_str]["temps"].append(temp)
@@ -296,6 +298,7 @@ def _normalize_yr(yr_data: dict, utc_offset_seconds: int) -> Optional[dict]:
                 "time":           hourly_times,
                 "temperature_2m": hourly_temps,
                 "precipitation":  hourly_precip,
+                "weather_code":   hourly_codes,
             },
             "daily": {
                 "time":                          dates,
@@ -340,6 +343,7 @@ def _normalize_smhi(smhi_data: dict, utc_offset_seconds: int) -> Optional[dict]:
         hourly_times:  list = []
         hourly_temps:  list = []
         hourly_precip: list = []
+        hourly_codes:  list = []
 
         daily: dict = defaultdict(lambda: {
             "temps": [], "precips": [], "winds": [], "codes": []
@@ -361,6 +365,7 @@ def _normalize_smhi(smhi_data: dict, utc_offset_seconds: int) -> Optional[dict]:
             hourly_times.append(time_str)
             hourly_temps.append(temp)
             hourly_precip.append(precip if precip is not None else 0.0)
+            hourly_codes.append(wmo)
 
             if temp is not None:
                 daily[date_str]["temps"].append(temp)
@@ -387,6 +392,7 @@ def _normalize_smhi(smhi_data: dict, utc_offset_seconds: int) -> Optional[dict]:
                 "time":           hourly_times,
                 "temperature_2m": hourly_temps,
                 "precipitation":  hourly_precip,
+                "weather_code":   hourly_codes,
             },
             "daily": {
                 "time":                          dates,
@@ -501,6 +507,7 @@ def _build_ensemble_hourly(model_data: dict) -> dict:
 
     ensemble_temps = []
     ensemble_precip = []
+    ensemble_codes = []
     temp_max = []
     temp_min = []
     by_model = {name: [] for name in model_data}
@@ -508,9 +515,11 @@ def _build_ensemble_hourly(model_data: dict) -> dict:
     for i in range(n):
         temps   = [hcol(d, "temperature_2m", i) for d in model_data.values()]
         precips = [hcol(d, "precipitation",  i) for d in model_data.values()]
+        codes = [hcol(d, "weather_code", i) for d in model_data.values()]
         valid   = [t for t in temps if t is not None]
         ensemble_temps.append(safe_mean(temps))
         ensemble_precip.append(safe_mean(precips))
+        ensemble_codes.append(majority_vote(codes))
         temp_max.append(round(max(valid), 1) if valid else None)
         temp_min.append(round(min(valid), 1) if valid else None)
         for name, data in model_data.items():
@@ -520,6 +529,7 @@ def _build_ensemble_hourly(model_data: dict) -> dict:
         "times":    times,
         "ensemble": ensemble_temps,
         "precip":   ensemble_precip,
+        "codes":    ensemble_codes,
         "max":      temp_max,
         "min":      temp_min,
         "by_model": by_model,

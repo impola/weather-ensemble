@@ -5,12 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Weather Ensemble</title>
   <link rel="stylesheet" href="style.css" />
+  <!-- Leaflet.js for radar maps (activate when ready):
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  -->
 </head>
 <body>
   <div class="app">
     <header class="header">
       <div class="header-inner">
-        <h1 class="logo">⛅ WeatherEnsemble <span style="font-size:0.5em;opacity:0.6;font-weight:normal">v6</span></h1>
+        <h1 class="logo">⛅ WeatherEnsemble <span style="font-size:0.5em;opacity:0.6;font-weight:normal">v7</span></h1>
         <p class="tagline">ECMWF · GFS · ICON · GEM · YR · SMHI — combined</p>
       </div>
     </header>
@@ -93,6 +96,12 @@
         </div>
       </section>
 
+      <!-- Hourly strip -->
+      <section class="card">
+        <h3 class="section-title">Nästa 24 timmar</h3>
+        <div id="hourly-strip" class="hourly-strip"></div>
+      </section>
+
       <!-- 7-day forecast -->
       <section class="card">
         <h3 class="section-title">7-dagarsprognos</h3>
@@ -127,6 +136,18 @@
         <div id="model-detail" class="model-detail" hidden>
           <canvas id="model-chart"></canvas>
         </div>
+      </section>
+
+      <!-- Radar map — prepared for future integration -->
+      <section class="card" id="radar-section">
+        <h3 class="section-title">Nederbördsradar</h3>
+        <div class="radar-placeholder">
+          <span class="radar-icon">🛰️</span>
+          <strong>Radar kommer snart</strong>
+          <p>Realtidsradar för nederbörd planeras med RainViewer API och Leaflet.js.</p>
+        </div>
+        <!-- To activate: replace placeholder div with <div id="radar-map"></div>
+             then call initRadar(lat, lon) after loadWeather() -->
       </section>
 
     </main>

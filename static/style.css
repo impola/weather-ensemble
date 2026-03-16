@@ -373,3 +373,81 @@ body {
     gap: 8px;
   }
 }
+
+/* ── Hourly strip ──────────────────────────────────────── */
+.hourly-strip {
+  display: flex;
+  overflow-x: auto;
+  gap: 2px;
+  padding-bottom: 6px;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+.hourly-strip::-webkit-scrollbar { height: 4px; }
+.hourly-strip::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+.hourly-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  min-width: 56px;
+  padding: 10px 6px 8px;
+  border-radius: 10px;
+  flex-shrink: 0;
+  transition: background .15s;
+}
+.hourly-item.now {
+  background: rgba(79,142,247,.12);
+  border: 1px solid rgba(79,142,247,.4);
+}
+.hourly-item:not(.now):hover { background: var(--surface2); }
+
+.h-time   { font-size: .72rem; color: var(--text-dim); }
+.h-icon   { font-size: 1.3rem; line-height: 1; }
+.h-temp   { font-size: .9rem; font-weight: 600; }
+.h-bar    {
+  width: 4px;
+  height: 20px;
+  background: var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+  position: relative;
+}
+.h-bar-fill {
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+  background: var(--accent);
+  border-radius: 2px;
+}
+.h-precip { font-size: .68rem; color: var(--accent); min-height: .85rem; }
+
+/* ── Wind direction arrow ──────────────────────────────── */
+.wind-arrow {
+  display: inline-block;
+  font-style: normal;
+  transition: transform .3s;
+  margin-right: 2px;
+}
+
+/* ── Radar placeholder ─────────────────────────────────── */
+.radar-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 28px 16px;
+  border: 2px dashed var(--border);
+  border-radius: var(--radius);
+  color: var(--text-dim);
+  text-align: center;
+}
+.radar-placeholder .radar-icon { font-size: 2.2rem; }
+.radar-placeholder strong { color: var(--text); font-size: .95rem; }
+.radar-placeholder p { font-size: .83rem; line-height: 1.6; max-width: 280px; }
+
+/* radar map container (hidden until activated) */
+#radar-map { width: 100%; height: 300px; border-radius: var(--radius); }

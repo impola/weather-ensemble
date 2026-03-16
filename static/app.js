@@ -186,8 +186,9 @@ function renderWeather(data) {
   $('current-temp').textContent = tempStr(cur.temperature);
   $('current-desc').textContent = cur.weather.description;
   $('feels-like').textContent   = tempStr(cur.feels_like);
-  const dir = windDir(cur.wind_dir);
-  $('wind-speed').textContent   = cur.wind_speed != null ? `${cur.wind_speed} km/h${dir ? ' ' + dir : ''}` : '—';
+  const arrowRot = cur.wind_dir != null ? cur.wind_dir : 0;
+  const windVal  = cur.wind_speed != null ? `${cur.wind_speed} km/h` : '—';
+  $('wind-speed').innerHTML = `<span class="wind-arrow" style="transform:rotate(${arrowRot}deg)">↑</span>${windVal}`;
   $('humidity').textContent     = cur.humidity != null ? `${cur.humidity}%` : '—';
   $('precipitation').textContent = cur.precipitation != null ? `${cur.precipitation} mm` : '—';
   $('models-used').textContent  = data.models_used.join(', ');
@@ -198,6 +199,9 @@ function renderWeather(data) {
 
   // Model breakdown
   renderModels(data.by_model);
+
+  // Hourly strip
+  renderHourlyStrip(data);
 
   // Forecast
   renderForecast(data.forecast);
@@ -216,12 +220,14 @@ function renderModels(byModel) {
   for (const [name, m] of Object.entries(byModel)) {
     const card = document.createElement('div');
     card.className = 'model-card' + (name === activeModel ? ' active' : '');
+    const precipStr = m.precipitation != null ? `🌧 ${m.precipitation} mm` : '';
     card.innerHTML = `
       <span class="model-name">${name}</span>
       <span class="model-icon">${m.weather.icon}</span>
       <span class="model-temp">${tempStr(m.temperature)}</span>
       <span class="model-desc">${m.weather.description}</span>
       <span class="model-extra">💨 ${m.wind_speed != null ? m.wind_speed + ' km/h' : '—'}</span>
+      ${precipStr ? `<span class="model-extra">${precipStr}</span>` : ''}
     `;
     card.addEventListener('click', () => toggleModelChart(name));
     grid.appendChild(card);
@@ -304,6 +310,56 @@ function renderModelChart(name) {
       },
     },
   });
+}
+
+/* ── Hourly strip ───────────────────────────────────────── */
+function renderHourlyStrip(data) {
+  const strip = $('hourly-strip');
+  if (!strip || !data.hourly) return;
+  strip.innerHTML = '';
+
+  const hours  = 24;
+  const start  = currentHourIndex(data);
+  const times  = data.hourly.times.slice(start, start + hours);
+  const temps  = data.hourly.ensemble.slice(start, start + hours);
+  const precips = (data.hourly.precip  || []).slice(start, start + hours);
+  const codes  = (data.hourly.codes   || []).slice(start, start + hours);
+
+  const maxPrecip = Math.max(...precips.filter(v => v != null && v > 0), 0.01);
+
+  times.forEach((t, i) => {
+    const item = document.createElement('div');
+    item.className = 'hourly-item' + (i === 0 ? ' now' : '');
+
+    const p          = precips[i] || 0;
+    const barHeight  = Math.round((p / maxPrecip) * 100);
+    const icon       = codes[i] != null ? describe_icon(codes[i]) : '';
+    const label      = i === 0 ? 'Nu' : formatHour(t);
+
+    item.innerHTML = `
+      <span class="h-time">${label}</span>
+      <span class="h-icon">${icon}</span>
+      <span class="h-temp">${temps[i] != null ? tempStr(temps[i]) : '—'}</span>
+      <div class="h-bar"><div class="h-bar-fill" style="height:${barHeight}%"></div></div>
+      <span class="h-precip">${p > 0.1 ? p.toFixed(1) : ''}</span>
+    `;
+    strip.appendChild(item);
+  });
+}
+
+function describe_icon(code) {
+  const c = parseInt(code);
+  if (c === 0) return '☀️';
+  if (c === 1) return '🌤️';
+  if (c === 2) return '⛅';
+  if (c === 3) return '☁️';
+  if (c <= 48) return '🌫️';
+  if (c <= 55) return '🌦️';
+  if (c <= 67) return '🌧️';
+  if (c <= 77) return '❄️';
+  if (c <= 82) return '🌦️';
+  if (c <= 86) return '❄️';
+  return '⛈️';
 }
 
 function renderForecast(forecast) {
@@ -648,5 +704,41 @@ function restoreLastLocation() {
     loadWeather(lat, lon, name);
   } catch {}
 }
+
+/* ── Radar map (prepared — activate when Leaflet.js is added) ──
+ *
+ * Steps to activate:
+ * 1. Uncomment the Leaflet CSS/JS links in index.html
+ * 2. Add <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script> to index.html
+ * 3. Replace the radar-placeholder div with <div id="radar-map"></div>
+ * 4. Call initRadar(lat, lon) after loadWeather() succeeds
+ *
+async function initRadar(lat, lon) {
+  const map = L.map('radar-map').setView([lat, lon], 7);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap contributors'
+  }).addTo(map);
+
+  // RainViewer animated radar overlay
+  const rv = await fetch('https://api.rainviewer.com/public/weather-maps.json').then(r => r.json());
+  const frames = [...rv.radar.past, ...(rv.radar.nowcast || [])];
+  let current = frames.length - 1;
+
+  const layers = frames.map(f =>
+    L.tileLayer(`https://tilecache.rainviewer.com${f.path}/256/{z}/{x}/{y}/2/1_1.png`, {
+      opacity: 0.6, tileSize: 256
+    })
+  );
+
+  layers[current].addTo(map);
+
+  // Animate through frames
+  setInterval(() => {
+    layers[current].remove();
+    current = (current + 1) % layers.length;
+    layers[current].addTo(map);
+  }, 500);
+}
+ * ─────────────────────────────────────────────────────────── */
 
 document.addEventListener('DOMContentLoaded', restoreLastLocation);
