@@ -268,23 +268,26 @@ function renderModelChart(name) {
   if (modelChart) { modelChart.destroy(); modelChart = null; }
 
   const hours  = 48;
+  const start  = currentHourIndex(weatherData);
   const color  = MODEL_COLORS[name] || '#888';
-  const times  = weatherData.hourly.times.slice(0, hours);
+  const times  = weatherData.hourly.times.slice(start, start + hours);
   const gridColor = 'rgba(46,51,80,0.8)';
   const tickColor = '#8890aa';
   const unitLabel = `°${unit}`;
 
+  const modelPrecip = (weatherData.hourly.by_model_precip?.[name] || weatherData.hourly.precip || []).slice(start, start + hours);
+
   const datasets = [
-    { label: 'Nederbörd (mm)', data: (weatherData.hourly.precip || []).slice(0, hours),
+    { label: 'Nederbörd (mm)', data: modelPrecip,
       borderColor: 'rgba(79,142,247,0.6)', backgroundColor: 'rgba(79,142,247,0.15)',
       borderWidth: 1.5, pointRadius: 0, tension: 0.4, fill: true, yAxisID: 'y1', order: 1 },
-    { label: '_band_upper', data: (weatherData.hourly.max || []).slice(0, hours).map(toUnit),
+    { label: '_band_upper', data: (weatherData.hourly.max || []).slice(start, start + hours).map(toUnit),
       borderWidth: 0, pointRadius: 0, fill: '+1', backgroundColor: 'rgba(255,255,255,0.07)', tension: 0.4, yAxisID: 'y' },
-    { label: '_band_lower', data: (weatherData.hourly.min || []).slice(0, hours).map(toUnit),
+    { label: '_band_lower', data: (weatherData.hourly.min || []).slice(start, start + hours).map(toUnit),
       borderWidth: 0, pointRadius: 0, fill: false, tension: 0.4, yAxisID: 'y' },
-    { label: 'Ensemble', data: weatherData.hourly.ensemble.slice(0, hours).map(toUnit),
+    { label: 'Ensemble', data: weatherData.hourly.ensemble.slice(start, start + hours).map(toUnit),
       borderColor: 'rgba(255,255,255,0.35)', borderWidth: 1.5, pointRadius: 0, tension: 0.4, yAxisID: 'y' },
-    { label: name, data: (weatherData.hourly.by_model[name] || []).slice(0, hours).map(toUnit),
+    { label: name, data: (weatherData.hourly.by_model[name] || []).slice(start, start + hours).map(toUnit),
       borderColor: color, borderWidth: 2.5, pointRadius: 0, tension: 0.4, yAxisID: 'y' },
   ];
 
@@ -407,10 +410,11 @@ function renderForecast(forecast) {
 
 /* ── Find current hour index in hourly data ─────────────── */
 function currentHourIndex(data) {
-  const offsetMs = (data.utc_offset_seconds || 0) * 1000;
-  const localNow = new Date(Date.now() + offsetMs + new Date().getTimezoneOffset() * 60000);
+  // Add location UTC offset to UTC timestamp, then read with getUTC* to get local time string
+  const localMs = Date.now() + (data.utc_offset_seconds || 0) * 1000;
+  const d = new Date(localMs);
   const pad = n => String(n).padStart(2, '0');
-  const nowStr = `${localNow.getFullYear()}-${pad(localNow.getMonth()+1)}-${pad(localNow.getDate())}T${pad(localNow.getHours())}:00`;
+  const nowStr = `${d.getUTCFullYear()}-${pad(d.getUTCMonth()+1)}-${pad(d.getUTCDate())}T${pad(d.getUTCHours())}:00`;
   const idx = data.hourly.times.findIndex(t => t >= nowStr);
   return idx >= 0 ? idx : 0;
 }
