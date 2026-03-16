@@ -13,7 +13,7 @@
   <div class="app">
     <header class="header">
       <div class="header-inner">
-        <h1 class="logo">⛅ WeatherEnsemble <span style="font-size:0.5em;opacity:0.6;font-weight:normal">v9</span></h1>
+        <h1 class="logo">⛅ WeatherEnsemble <span style="font-size:0.5em;opacity:0.6;font-weight:normal">v10</span></h1>
         <p class="tagline">ECMWF · GFS · ICON · GEM · YR · SMHI — combined</p>
       </div>
     </header>
@@ -138,16 +138,23 @@
         </div>
       </section>
 
-      <!-- Radar map — prepared for future integration -->
+      <!-- Live map — Windy.com embed -->
       <section class="card" id="radar-section">
-        <h3 class="section-title">Nederbördsradar</h3>
-        <div class="radar-placeholder">
-          <span class="radar-icon">🛰️</span>
-          <strong>Radar kommer snart</strong>
-          <p>Realtidsradar för nederbörd planeras med RainViewer API och Leaflet.js.</p>
+        <div class="radar-header">
+          <h3 class="section-title" style="margin-bottom:0">Live Karta</h3>
+          <div class="radar-tabs">
+            <button class="radar-tab active" data-layer="precip">🌧 Radar</button>
+            <button class="radar-tab" data-layer="wind">💨 Vind</button>
+          </div>
         </div>
-        <!-- To activate: replace placeholder div with <div id="radar-map"></div>
-             then call initRadar(lat, lon) after loadWeather() -->
+        <div class="radar-map-wrap">
+          <div class="radar-placeholder" id="radar-placeholder">
+            <span class="radar-icon">🛰️</span>
+            <p>Sök efter en plats för att visa realtidskarta</p>
+          </div>
+          <iframe id="precip-frame" class="windy-frame" src="" frameborder="0" allowfullscreen></iframe>
+          <iframe id="wind-frame" class="windy-frame" src="" frameborder="0" allowfullscreen></iframe>
+        </div>
       </section>
 
     </main>

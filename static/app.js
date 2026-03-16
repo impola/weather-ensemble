@@ -162,6 +162,7 @@ async function loadWeather(lat, lon, name) {
   weatherData = data;
   activeModel = null;
   if (modelChart) { modelChart.destroy(); modelChart = null; }
+  initWindyMaps(lat, lon);
   try {
     renderWeather(weatherData);
   } catch (err) {
@@ -721,7 +722,29 @@ function restoreLastLocation() {
   } catch {}
 }
 
-/* ── Radar map (prepared — activate when Leaflet.js is added) ──
+/* ── Live map (Windy.com embeds) ────────────────────────── */
+function initWindyMaps(lat, lon) {
+  const zoom = 7;
+  const base = `https://embed.windy.com/embed2.html?lat=${lat.toFixed(2)}&lon=${lon.toFixed(2)}&zoom=${zoom}&level=surface&menu=&message=true&marker=true&metricWind=km%2Fh&metricTemp=%C2%B0C`;
+  $('precip-frame').src = `${base}&overlay=radar&product=radar`;
+  $('wind-frame').src   = `${base}&overlay=wind&product=ecmwf`;
+  $('radar-placeholder').hidden = true;
+  // Show whichever tab is currently active
+  const activeLayer = document.querySelector('.radar-tab.active')?.dataset.layer || 'precip';
+  document.querySelectorAll('.windy-frame').forEach(f => f.classList.remove('active'));
+  $(`${activeLayer}-frame`).classList.add('active');
+}
+
+document.querySelectorAll('.radar-tab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.radar-tab').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('.windy-frame').forEach(f => f.classList.remove('active'));
+    $(`${btn.dataset.layer}-frame`).classList.add('active');
+  });
+});
+
+/* ── Radar map (archived — replaced by Windy embeds) ────────
  *
  * Steps to activate:
  * 1. Uncomment the Leaflet CSS/JS links in index.html

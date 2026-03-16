@@ -432,22 +432,63 @@ body {
   margin-right: 2px;
 }
 
-/* ── Radar placeholder ─────────────────────────────────── */
+/* ── Live map (Windy) ──────────────────────────────────── */
+.radar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.radar-tabs { display: flex; gap: 6px; }
+.radar-tab {
+  padding: 5px 14px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: .8rem;
+  transition: all .2s;
+}
+.radar-tab.active {
+  background: rgba(79,142,247,.18);
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+.radar-map-wrap {
+  position: relative;
+  height: 400px;
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--surface2);
+}
+
 .radar-placeholder {
+  position: absolute;
+  inset: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 10px;
-  padding: 28px 16px;
-  border: 2px dashed var(--border);
-  border-radius: var(--radius);
   color: var(--text-dim);
   text-align: center;
 }
 .radar-placeholder .radar-icon { font-size: 2.2rem; }
-.radar-placeholder strong { color: var(--text); font-size: .95rem; }
-.radar-placeholder p { font-size: .83rem; line-height: 1.6; max-width: 280px; }
+.radar-placeholder p { font-size: .83rem; line-height: 1.6; max-width: 240px; }
 
-/* radar map container (hidden until activated) */
-#radar-map { width: 100%; height: 300px; border-radius: var(--radius); }
+.windy-frame {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: none;
+  display: none;
+}
+.windy-frame.active { display: block; }
+
+@media (max-width: 480px) {
+  .radar-map-wrap { height: 320px; }
+}
