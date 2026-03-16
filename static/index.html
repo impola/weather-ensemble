@@ -13,7 +13,7 @@
   <div class="app">
     <header class="header">
       <div class="header-inner">
-        <h1 class="logo">⛅ WeatherEnsemble <span style="font-size:0.5em;opacity:0.6;font-weight:normal">v10</span></h1>
+        <h1 class="logo">⛅ WeatherEnsemble <span style="font-size:0.5em;opacity:0.6;font-weight:normal">v12</span></h1>
         <p class="tagline">ECMWF · GFS · ICON · GEM · YR · SMHI — combined</p>
       </div>
     </header>
@@ -102,31 +102,25 @@
         <div id="hourly-strip" class="hourly-strip"></div>
       </section>
 
-      <!-- 7-day forecast -->
+      <!-- Prognos: Tabell / Graf -->
       <section class="card">
-        <h3 class="section-title">7-dagarsprognos</h3>
-        <div id="forecast-list" class="forecast-list"></div>
-      </section>
-
-      <!-- Temperature chart -->
-      <section class="card">
-        <div class="chart-header">
-          <h3 class="section-title">Temperatur över tid</h3>
-          <div class="range-toggle">
-            <button class="range-btn active" data-range="12h">12 h</button>
-            <button class="range-btn" data-range="24h">24 h</button>
-            <button class="range-btn" data-range="48h">48 h</button>
+        <div class="prognos-header">
+          <h3 class="section-title" style="margin-bottom:0">Prognos</h3>
+          <div class="ftoggle">
+            <button class="ftoggle-btn active" data-view="tabell">Tabell</button>
+            <button class="ftoggle-btn" data-view="graf">Graf</button>
           </div>
         </div>
-        <div class="chart-container">
-          <canvas id="temp-chart"></canvas>
+        <div id="forecast-tabell"></div>
+        <div id="forecast-graf" hidden>
+          <div class="range-toggle" style="margin:10px 0 14px">
+            <button class="range-btn active" data-range="24h">24 h</button>
+            <button class="range-btn" data-range="48h">48 h</button>
+          </div>
+          <div class="chart-container">
+            <canvas id="temp-chart"></canvas>
+          </div>
         </div>
-      </section>
-
-      <!-- Temp table -->
-      <section class="card">
-        <h3 class="section-title">Temperaturtabell</h3>
-        <div id="temp-table-wrap" class="temp-table-wrap"></div>
       </section>
 
       <!-- Model breakdown -->

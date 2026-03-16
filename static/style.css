@@ -1,5 +1,6 @@
 /* ── Reset & base ─────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+[hidden] { display: none !important; }
 
 :root {
   --bg:        #0f1117;
@@ -491,4 +492,91 @@ body {
 
 @media (max-width: 480px) {
   .radar-map-wrap { height: 320px; }
+}
+
+/* ── Prognos header / toggle ─────────────────────────────── */
+.prognos-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.ftoggle {
+  display: flex;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.ftoggle-btn {
+  padding: 5px 18px;
+  border: none;
+  background: transparent;
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: .85rem;
+  font-weight: 500;
+  transition: all .2s;
+}
+.ftoggle-btn.active {
+  background: var(--accent);
+  color: #fff;
+}
+.ftoggle-btn:not(.active):hover { background: var(--surface2); }
+
+/* ── yr.no-style forecast table ─────────────────────────── */
+.yr-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: .88rem;
+}
+
+.yr-table thead th {
+  color: var(--text-dim);
+  font-size: .72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .4px;
+  padding: 0 6px 10px;
+  border-bottom: 1px solid var(--border);
+  text-align: center;
+}
+.yr-table thead th.yt-day { text-align: left; }
+.yr-table thead th.yt-hl  { text-align: right; }
+.yr-table thead th.yt-pr  { text-align: right; }
+.yr-table thead th.yt-wi  { text-align: right; }
+
+.yr-table tbody tr {
+  border-bottom: 1px solid rgba(46,51,80,.4);
+  transition: background .15s;
+}
+.yr-table tbody tr:last-child { border-bottom: none; }
+.yr-table tbody tr:hover { background: var(--surface2); }
+.yr-table tbody tr.yt-today { background: rgba(79,142,247,.06); }
+
+.yr-table td { padding: 10px 6px; vertical-align: middle; }
+
+.yt-day-cell { text-align: left; }
+.yt-day-cell strong { font-weight: 600; font-size: .92rem; }
+.yt-sub { color: var(--text-dim); font-size: .75rem; }
+
+.yt-period { text-align: center; font-size: 1.25rem; line-height: 1.2; }
+.yt-period.yt-past { color: var(--text-dim); font-size: .85rem; opacity: .4; }
+.yt-pmm { color: var(--accent); font-size: .7rem; display: block; }
+
+.yt-hl-cell { text-align: right; white-space: nowrap; }
+.yt-hi { font-weight: 700; color: #f5a623; }
+.yt-sep { color: var(--text-dim); }
+.yt-lo { color: #74c2ff; }
+
+.yt-pr-cell { text-align: right; white-space: nowrap; }
+.yt-blue { color: var(--accent); font-weight: 500; }
+
+.yt-wi-cell { text-align: right; color: var(--text-dim); white-space: nowrap; }
+
+@media (max-width: 480px) {
+  .yr-table thead th.yt-pr,
+  .yr-table thead th.yt-wi,
+  .yr-table td.yt-pr-cell,
+  .yr-table td.yt-wi-cell { display: none; }
 }

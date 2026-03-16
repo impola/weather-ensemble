@@ -4,7 +4,8 @@ let weatherData    = null;
 let tempChart      = null;
 let modelChart     = null;
 let activeModel    = null;
-let chartRange     = '12h';
+let chartRange     = '24h';
+let forecastView   = 'tabell';
 
 const LS_KEY = 'weather_last_location';
 
@@ -204,15 +205,17 @@ function renderWeather(data) {
   // Hourly strip
   renderHourlyStrip(data);
 
-  // Forecast
-  renderForecast(data.forecast);
+  // Forecast table (yr.no style)
+  renderForecastTable(data);
 
-  // Reveal content first, then defer chart two frames so layout is calculated
+  // Reveal content first, then defer chart if graf is active
   $('weather-content').hidden = false;
-  requestAnimationFrame(() => requestAnimationFrame(() => {
-    try { renderChart(data); renderTempTable(data, chartRange); }
-    catch (err) { console.error('Chart error:', err); showError(`Chart error: ${err.message}`); }
-  }));
+  if (forecastView === 'graf') {
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      try { renderChart(data); }
+      catch (err) { console.error('Chart error:', err); }
+    }));
+  }
 }
 
 function renderModels(byModel) {
@@ -378,6 +381,106 @@ function describe_icon(code) {
   return '⛈️';
 }
 
+/* ── Day slices helper ──────────────────────────────────── */
+function buildDaySlices(data) {
+  const slices = {};
+  const times   = data.hourly.times;
+  const codes   = data.hourly.codes   || [];
+  const precips = data.hourly.precip  || [];
+
+  times.forEach((t, i) => {
+    const dateStr = t.slice(0, 10);
+    const hour    = parseInt(t.slice(11, 13));
+    if (!slices[dateStr]) slices[dateStr] = { natt: [], morgen: [], dag: [], kvall: [] };
+    const entry = { code: codes[i], precip: precips[i] ?? 0 };
+    if (hour < 6)        slices[dateStr].natt.push(entry);
+    else if (hour < 12)  slices[dateStr].morgen.push(entry);
+    else if (hour < 18)  slices[dateStr].dag.push(entry);
+    else                 slices[dateStr].kvall.push(entry);
+  });
+  return slices;
+}
+
+function jsMajority(arr) {
+  const valid = arr.filter(v => v != null);
+  if (!valid.length) return null;
+  const counts = {};
+  valid.forEach(v => { counts[v] = (counts[v] || 0) + 1; });
+  return Object.entries(counts).sort((a, b) => b[1] - a[1])[0][0];
+}
+
+/* ── yr.no-style forecast table ─────────────────────────── */
+function renderForecastTable(data) {
+  const wrap = $('forecast-tabell');
+  if (!wrap) return;
+  wrap.innerHTML = '';
+
+  const slices  = buildDaySlices(data);
+  const curIdx  = currentHourIndex(data);
+  const nowDate = data.hourly.times[curIdx]?.slice(0, 10) || '';
+  const nowHour = parseInt(data.hourly.times[curIdx]?.slice(11, 13) ?? '23');
+
+  const table = document.createElement('table');
+  table.className = 'yr-table';
+  table.innerHTML = `<thead><tr>
+    <th class="yt-day"></th>
+    <th class="yt-period">Natt<br><small>0–6</small></th>
+    <th class="yt-period">Morgon<br><small>6–12</small></th>
+    <th class="yt-period">Dag<br><small>12–18</small></th>
+    <th class="yt-period">Kväll<br><small>18–24</small></th>
+    <th class="yt-hl">Temp H / L</th>
+    <th class="yt-pr">Nedb</th>
+    <th class="yt-wi">Vind</th>
+  </tr></thead>`;
+
+  const tbody = document.createElement('tbody');
+  data.forecast.forEach((day, i) => {
+    const s = slices[day.date] || { natt: [], morgen: [], dag: [], kvall: [] };
+    const isToday  = day.date === nowDate;
+    const dayLabel = i === 0 ? 'Idag' : formatDate(day.date);
+
+    const pastNatt   = isToday && nowHour >= 6;
+    const pastMorgen = isToday && nowHour >= 12;
+    const pastDag    = isToday && nowHour >= 18;
+
+    const cell = (entries, past) => {
+      if (past || !entries.length) return '<td class="yt-period yt-past">—</td>';
+      const code   = parseInt(jsMajority(entries.map(e => e.code).filter(c => c != null)));
+      const precip = entries.reduce((s, e) => s + (e.precip || 0), 0);
+      const icon   = isNaN(code) ? '—' : describe_icon(code);
+      const pStr   = precip > 0.1 ? `<br><small class="yt-pmm">${precip.toFixed(1)}</small>` : '';
+      return `<td class="yt-period">${icon}${pStr}</td>`;
+    };
+
+    const wind  = day.wind_speed  != null ? Math.round(day.wind_speed)  + ' km/h' : '—';
+    const precT = day.precipitation > 0   ? `<span class="yt-blue">${day.precipitation} mm</span>` : '—';
+
+    const tr = document.createElement('tr');
+    tr.className = isToday ? 'yt-today' : '';
+    tr.innerHTML = `
+      <td class="yt-day-cell">
+        <strong>${dayLabel}</strong>
+        ${i > 0 ? `<br><small class="yt-sub">${day.date.slice(5).replace('-','/')}</small>` : ''}
+      </td>
+      ${cell(s.natt,   pastNatt)}
+      ${cell(s.morgen, pastMorgen)}
+      ${cell(s.dag,    pastDag)}
+      ${cell(s.kvall,  false)}
+      <td class="yt-hl-cell">
+        <span class="yt-hi">${tempStr(day.temp_max)}</span>
+        <span class="yt-sep"> / </span>
+        <span class="yt-lo">${tempStr(day.temp_min)}</span>
+      </td>
+      <td class="yt-pr-cell">${precT}</td>
+      <td class="yt-wi-cell">${wind}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  table.appendChild(tbody);
+  wrap.appendChild(table);
+}
+
 function renderForecast(forecast) {
   const list = $('forecast-list');
   list.innerHTML = '';
@@ -475,18 +578,18 @@ function buildChartData(data, range) {
   const labels = times.map(formatHour);
 
   const datasets = [
-    // Precipitation line (secondary axis)
+    // Precipitation bars (secondary axis)
     {
-      label:           'Precip (mm)',
+      type:            'bar',
+      label:           'Nederbörd (mm)',
       data:            (data.hourly.precip || []).slice(start, start + hours),
-      borderColor:     'rgba(79,142,247,0.6)',
-      backgroundColor: 'rgba(79,142,247,0.15)',
-      borderWidth:     1.5,
-      pointRadius:     0,
-      tension:         0.4,
-      fill:            true,
+      backgroundColor: 'rgba(79,142,247,0.55)',
+      borderColor:     'rgba(79,142,247,0.8)',
+      borderWidth:     0,
       yAxisID:         'y1',
       order:           1,
+      barPercentage:   0.9,
+      categoryPercentage: 1.0,
     },
     // Spread band
     { label: '_band_upper', data: (data.hourly.max || []).slice(start, start + hours).map(toUnit),
@@ -543,9 +646,32 @@ function renderChart(data) {
     };
   }
 
+  const daySepPlugin = {
+    id: 'daySep',
+    beforeDraw(chart) {
+      const { ctx: c, scales: { x, y } } = chart;
+      if (!x || !y) return;
+      chart.data.labels.forEach((lbl, i) => {
+        if (i > 0 && lbl && !String(lbl).includes(':')) {
+          const xPos = x.getPixelForValue(i);
+          c.save();
+          c.strokeStyle = 'rgba(255,255,255,0.18)';
+          c.lineWidth = 1;
+          c.setLineDash([3, 3]);
+          c.beginPath();
+          c.moveTo(xPos, y.top);
+          c.lineTo(xPos, y.bottom + 20);
+          c.stroke();
+          c.restore();
+        }
+      });
+    }
+  };
+
   tempChart = new Chart(ctx, {
     type: 'line',
     data: { labels, datasets },
+    plugins: [daySepPlugin],
     options: {
       responsive:          true,
       maintainAspectRatio: false,
@@ -654,7 +780,21 @@ document.querySelectorAll('.range-btn').forEach(btn => {
     document.querySelectorAll('.range-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     chartRange = btn.dataset.range;
-    if (weatherData) { renderChart(weatherData); renderTempTable(weatherData, chartRange); }
+    if (weatherData) renderChart(weatherData);
+  });
+});
+
+/* ── Forecast Tabell/Graf toggle ────────────────────────── */
+document.querySelectorAll('.ftoggle-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.ftoggle-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    forecastView = btn.dataset.view;
+    $('forecast-tabell').hidden = forecastView !== 'tabell';
+    $('forecast-graf').hidden   = forecastView !== 'graf';
+    if (forecastView === 'graf' && weatherData) {
+      requestAnimationFrame(() => requestAnimationFrame(() => renderChart(weatherData)));
+    }
   });
 });
 
@@ -667,7 +807,7 @@ function switchUnit(u) {
   unit = u;
   $('unit-c').classList.toggle('active', u === 'C');
   $('unit-f').classList.toggle('active', u === 'F');
-  if (weatherData) { renderWeather(weatherData); renderChart(weatherData); renderTempTable(weatherData, chartRange); }
+  if (weatherData) { renderWeather(weatherData); }
 }
 
 /* ── Geolocation ────────────────────────────────────────── */
@@ -726,9 +866,9 @@ function restoreLastLocation() {
 function initWindyMaps(lat, lon) {
   const zoom = 7;
   const base = `https://embed.windy.com/embed2.html?lat=${lat.toFixed(2)}&lon=${lon.toFixed(2)}&zoom=${zoom}&level=surface&menu=&message=true&marker=true&metricWind=km%2Fh&metricTemp=%C2%B0C`;
-  $('precip-frame').src = `${base}&overlay=radar&product=radar`;
+  $('precip-frame').src = `${base}&overlay=radar`;
   $('wind-frame').src   = `${base}&overlay=wind&product=ecmwf`;
-  $('radar-placeholder').hidden = true;
+  $('radar-placeholder').style.display = 'none';
   // Show whichever tab is currently active
   const activeLayer = document.querySelector('.radar-tab.active')?.dataset.layer || 'precip';
   document.querySelectorAll('.windy-frame').forEach(f => f.classList.remove('active'));
