@@ -13,30 +13,30 @@ MODELS = {
 }
 
 WMO_CODES = {
-    0:  ("Clear Sky",                "☀️"),
-    1:  ("Mainly Clear",             "🌤️"),
-    2:  ("Partly Cloudy",            "⛅"),
-    3:  ("Overcast",                 "☁️"),
-    45: ("Foggy",                    "🌫️"),
-    48: ("Icy Fog",                  "🌫️"),
-    51: ("Light Drizzle",            "🌦️"),
-    53: ("Drizzle",                  "🌦️"),
-    55: ("Heavy Drizzle",            "🌧️"),
-    61: ("Light Rain",               "🌧️"),
-    63: ("Rain",                     "🌧️"),
-    65: ("Heavy Rain",               "🌧️"),
-    71: ("Light Snow",               "🌨️"),
-    73: ("Snow",                     "❄️"),
-    75: ("Heavy Snow",               "❄️"),
-    77: ("Snow Grains",              "🌨️"),
-    80: ("Rain Showers",             "🌦️"),
-    81: ("Heavy Showers",            "🌧️"),
-    82: ("Violent Showers",          "⛈️"),
-    85: ("Snow Showers",             "🌨️"),
-    86: ("Heavy Snow Showers",       "❄️"),
-    95: ("Thunderstorm",             "⛈️"),
-    96: ("Thunderstorm w/ Hail",     "⛈️"),
-    99: ("Thunderstorm w/ Heavy Hail","⛈️"),
+    0:  ("Klart",                       "☀️"),
+    1:  ("Mestadels klart",             "🌤️"),
+    2:  ("Delvis molnigt",              "⛅"),
+    3:  ("Mulet",                       "☁️"),
+    45: ("Dimma",                       "🌫️"),
+    48: ("Ishalka",                     "🌫️"),
+    51: ("Lätt duggregn",               "🌦️"),
+    53: ("Duggregn",                    "🌦️"),
+    55: ("Kraftigt duggregn",           "🌧️"),
+    61: ("Lätt regn",                   "🌧️"),
+    63: ("Regn",                        "🌧️"),
+    65: ("Kraftigt regn",               "🌧️"),
+    71: ("Lätt snöfall",                "🌨️"),
+    73: ("Snöfall",                     "❄️"),
+    75: ("Kraftigt snöfall",            "❄️"),
+    77: ("Snöflingor",                  "🌨️"),
+    80: ("Regnskurar",                  "🌦️"),
+    81: ("Kraftiga regnskurar",         "🌧️"),
+    82: ("Häftiga regnskurar",          "⛈️"),
+    85: ("Snöbyar",                     "🌨️"),
+    86: ("Kraftiga snöbyar",            "❄️"),
+    95: ("Åskväder",                    "⛈️"),
+    96: ("Åskväder med hagel",          "⛈️"),
+    99: ("Åskväder med kraftigt hagel", "⛈️"),
 }
 
 SMHI_WSYMB2_TO_WMO = {
@@ -510,12 +510,13 @@ def _build_ensemble_hourly(model_data: dict) -> dict:
     ensemble_codes = []
     temp_max = []
     temp_min = []
-    by_model = {name: [] for name in model_data}
+    by_model        = {name: [] for name in model_data}
+    by_model_precip = {name: [] for name in model_data}
 
     for i in range(n):
         temps   = [hcol(d, "temperature_2m", i) for d in model_data.values()]
         precips = [hcol(d, "precipitation",  i) for d in model_data.values()]
-        codes = [hcol(d, "weather_code", i) for d in model_data.values()]
+        codes   = [hcol(d, "weather_code",   i) for d in model_data.values()]
         valid   = [t for t in temps if t is not None]
         ensemble_temps.append(safe_mean(temps))
         ensemble_precip.append(safe_mean(precips))
@@ -524,15 +525,17 @@ def _build_ensemble_hourly(model_data: dict) -> dict:
         temp_min.append(round(min(valid), 1) if valid else None)
         for name, data in model_data.items():
             by_model[name].append(hcol(data, "temperature_2m", i))
+            by_model_precip[name].append(hcol(data, "precipitation", i))
 
     return {
-        "times":    times,
-        "ensemble": ensemble_temps,
-        "precip":   ensemble_precip,
-        "codes":    ensemble_codes,
-        "max":      temp_max,
-        "min":      temp_min,
-        "by_model": by_model,
+        "times":          times,
+        "ensemble":       ensemble_temps,
+        "precip":         ensemble_precip,
+        "codes":          ensemble_codes,
+        "max":            temp_max,
+        "min":            temp_min,
+        "by_model":       by_model,
+        "by_model_precip": by_model_precip,
     }
 
 

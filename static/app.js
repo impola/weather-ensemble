@@ -175,7 +175,7 @@ function renderWeather(data) {
   const cur = data.current;
 
   // Location & time
-  $('location-name').textContent = data.location_name || 'Unknown';
+  $('location-name').textContent = data.location_name || 'Okänd plats';
   $('location-time').textContent = new Date().toLocaleString('sv-SE', {
     weekday: 'long', hour: '2-digit', minute: '2-digit',
     timeZone: data.timezone || undefined,
@@ -220,14 +220,26 @@ function renderModels(byModel) {
   for (const [name, m] of Object.entries(byModel)) {
     const card = document.createElement('div');
     card.className = 'model-card' + (name === activeModel ? ' active' : '');
-    const precipStr = m.precipitation != null ? `🌧 ${m.precipitation} mm` : '';
+
+    // Per-model 24h precipitation from hourly data
+    const start = weatherData ? currentHourIndex(weatherData) : 0;
+    const arr   = (weatherData?.hourly?.by_model_precip?.[name] || []).slice(start, start + 24);
+    const valid = arr.filter(v => v != null);
+    const total = valid.length ? valid.reduce((a, b) => a + b, 0) : null;
+    const avg   = total !== null ? total / valid.length : null;
+
+    const nowMm  = m.precipitation != null ? `${m.precipitation} mm` : '—';
+    const totStr = total !== null ? `${total.toFixed(1)} mm` : '—';
+    const avgStr = avg   !== null ? `${avg.toFixed(2)} mm/h` : '—';
+
     card.innerHTML = `
       <span class="model-name">${name}</span>
       <span class="model-icon">${m.weather.icon}</span>
       <span class="model-temp">${tempStr(m.temperature)}</span>
       <span class="model-desc">${m.weather.description}</span>
       <span class="model-extra">💨 ${m.wind_speed != null ? m.wind_speed + ' km/h' : '—'}</span>
-      ${precipStr ? `<span class="model-extra">${precipStr}</span>` : ''}
+      <span class="model-extra">🌧 Nu: ${nowMm}</span>
+      <span class="model-extra">24h: ${totStr} · Ø ${avgStr}</span>
     `;
     card.addEventListener('click', () => toggleModelChart(name));
     grid.appendChild(card);
@@ -263,7 +275,7 @@ function renderModelChart(name) {
   const unitLabel = `°${unit}`;
 
   const datasets = [
-    { label: 'Precip (mm)', data: (weatherData.hourly.precip || []).slice(0, hours),
+    { label: 'Nederbörd (mm)', data: (weatherData.hourly.precip || []).slice(0, hours),
       borderColor: 'rgba(79,142,247,0.6)', backgroundColor: 'rgba(79,142,247,0.15)',
       borderWidth: 1.5, pointRadius: 0, tension: 0.4, fill: true, yAxisID: 'y1', order: 1 },
     { label: '_band_upper', data: (weatherData.hourly.max || []).slice(0, hours).map(toUnit),
@@ -295,7 +307,7 @@ function renderModelChart(name) {
           callbacks: {
             label: ctx => {
               const v = ctx.parsed.y;
-              if (ctx.dataset.label === 'Precip (mm)') return ` Precip: ${v != null ? v + ' mm' : '—'}`;
+              if (ctx.dataset.label === 'Nederbörd (mm)') return ` Nederbörd: ${v != null ? v + ' mm' : '—'}`;
               return ` ${ctx.dataset.label}: ${v != null ? v + unitLabel : '—'}`;
             },
           },
@@ -370,7 +382,7 @@ function renderForecast(forecast) {
     const row = document.createElement('div');
     row.className = 'forecast-row';
 
-    const label = i === 0 ? 'Today' : formatDate(day.date);
+    const label = i === 0 ? 'Idag' : formatDate(day.date);
     const pp    = day.precipitation_probability ?? 0;
 
     row.innerHTML = `
@@ -428,7 +440,7 @@ function buildChartData(data, range) {
         tension: 0.35 },
       // Ensemble max
       {
-        label:           'High',
+        label:           'Max',
         data:            data.forecast.map(d => toUnit(d.temp_max)),
         borderColor:     '#ffffff',
         borderWidth:     2.5,
@@ -439,7 +451,7 @@ function buildChartData(data, range) {
       },
       // Ensemble min (dashed)
       {
-        label:           'Low',
+        label:           'Min',
         data:            data.forecast.map(d => toUnit(d.temp_min)),
         borderColor:     'rgba(255,255,255,0.5)',
         borderWidth:     1.5,
@@ -479,7 +491,7 @@ function buildChartData(data, range) {
       borderWidth: 0, pointRadius: 0, fill: false, tension: 0.4, yAxisID: 'y' },
     // Ensemble (bold white)
     {
-      label:           'Temperature',
+      label:           'Temperatur',
       data:            data.hourly.ensemble.slice(start, start + hours).map(toUnit),
       borderColor:     '#ffffff',
       borderWidth:     2.5,
@@ -549,7 +561,7 @@ function renderChart(data) {
           callbacks: {
             label: ctx => {
               const v = ctx.parsed.y;
-              if (ctx.dataset.label === 'Precip (mm)') return ` Precip: ${v != null ? v + ' mm' : '—'}`;
+              if (ctx.dataset.label === 'Nederbörd (mm)') return ` Nederbörd: ${v != null ? v + ' mm' : '—'}`;
               return ` ${ctx.dataset.label}: ${v !== null ? v + unitLabel : '—'}`;
             },
             afterBody: items => {
@@ -581,7 +593,7 @@ function renderTempTable(data, range) {
 
   if (range === '7day') {
     table.innerHTML = `<thead><tr>
-      <th>Day</th><th>Icon</th><th>Condition</th>
+      <th>Dag</th><th>Ikon</th><th>Väder</th>
       <th>Max</th><th>Min</th><th>Nederbörd</th><th>Regn %</th><th>Tillförlitlighet</th>
     </tr></thead>`;
     const tbody = document.createElement('tbody');
