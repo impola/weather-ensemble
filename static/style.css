@@ -494,6 +494,60 @@ body {
   .radar-map-wrap { height: 320px; }
 }
 
+/* ── AI analysis block ───────────────────────────────────── */
+.ai-block {
+  border-top: 1px solid var(--border);
+  margin-top: 18px;
+  padding-top: 14px;
+}
+.ai-header-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+.ai-label {
+  font-size: .72rem;
+  font-weight: 700;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: .6px;
+}
+.ai-badges { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+
+.ai-trend-badge {
+  font-size: .78rem;
+  padding: 2px 9px;
+  border-radius: 20px;
+  background: rgba(255,255,255,.07);
+  color: var(--text-dim);
+}
+.ai-model-badge {
+  font-size: .78rem;
+  padding: 2px 9px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  font-weight: 600;
+}
+
+.ai-summary-text {
+  font-size: .95rem;
+  line-height: 1.55;
+  margin-bottom: 6px;
+}
+.ai-reason-text {
+  font-size: .8rem;
+  color: var(--text-dim);
+  line-height: 1.4;
+  margin-bottom: 4px;
+}
+.ai-outlier-text {
+  font-size: .75rem;
+  color: var(--low);
+  opacity: .8;
+}
+
 /* ── Prognos header / toggle ─────────────────────────────── */
 .prognos-header {
   display: flex;

@@ -13,7 +13,7 @@
   <div class="app">
     <header class="header">
       <div class="header-inner">
-        <h1 class="logo">⛅ WeatherEnsemble <span style="font-size:0.5em;opacity:0.6;font-weight:normal">v13</span></h1>
+        <h1 class="logo">⛅ WeatherEnsemble <span style="font-size:0.5em;opacity:0.6;font-weight:normal">v14</span></h1>
         <p class="tagline">ECMWF · GFS · ICON · GEM · YR · SMHI — combined</p>
       </div>
     </header>
@@ -93,6 +93,21 @@
             <span class="detail-label">Tillförlitlighet</span>
             <span id="confidence" class="confidence-badge"></span>
           </div>
+        </div>
+
+        <!-- AI analysis -->
+        <div class="ai-block" id="ai-block" hidden>
+          <div class="ai-header-row">
+            <span class="ai-label">🤖 AI-analys</span>
+            <div class="ai-badges">
+              <span id="ai-conf-badge" class="confidence-badge"></span>
+              <span id="ai-trend-badge" class="ai-trend-badge"></span>
+              <span id="ai-model-badge" class="ai-model-badge"></span>
+            </div>
+          </div>
+          <p id="ai-summary-text" class="ai-summary-text"></p>
+          <p id="ai-reason-text" class="ai-reason-text"></p>
+          <p id="ai-outlier-text" class="ai-outlier-text"></p>
         </div>
       </section>
 

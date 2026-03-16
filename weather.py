@@ -1,5 +1,9 @@
 import asyncio
+import json
+import os
+import re
 import httpx
+import anthropic
 from collections import defaultdict
 from datetime import datetime, timedelta
 from statistics import mean, stdev
@@ -539,7 +543,83 @@ def _build_ensemble_hourly(model_data: dict) -> dict:
     }
 
 
-async def get_ensemble_forecast(lat: float, lon: float) -> dict:
+async def _get_ai_analysis(
+    model_data: dict,
+    ensemble_current: dict,
+    forecast: list,
+    location_name: str,
+) -> dict:
+    """Call Claude Opus to intelligently interpret the multi-model ensemble."""
+    fallback = {
+        "sammanfattning": None, "basta_modell": None,
+        "avvikande_modeller": [], "justerad_konfidens": None,
+        "motivering": None, "trend": None,
+    }
+    api_key = os.environ.get("ANTHROPIC_API_KEY")
+    if not api_key:
+        return fallback
+
+    try:
+        # Compact per-model snapshot
+        model_lines = []
+        for name, data in model_data.items():
+            c = data.get("current", {})
+            h = data.get("hourly", {})
+            p24 = round(sum(v for v in (h.get("precipitation") or [])[:24] if v is not None), 1)
+            model_lines.append(
+                f"  {name}: {c.get('temperature_2m')}°C, "
+                f"vind {c.get('wind_speed_10m')} km/h, "
+                f"24h-nedbör {p24} mm, kod {c.get('weather_code')}"
+            )
+
+        day_lines = []
+        for d in forecast[:3]:
+            day_lines.append(
+                f"  {d['date']}: max {d['temp_max']}°C min {d['temp_min']}°C "
+                f"nedbör {d['precipitation']} mm"
+            )
+
+        prompt = (
+            f"Du är meteorolog. Analysera ensemble-prognosen för {location_name or 'okänd plats'}.\n\n"
+            "Modelldata just nu:\n" + "\n".join(model_lines) + "\n\n"
+            f"Ensemble-medel: {ensemble_current.get('temperature')}°C, "
+            f"modellspridning: {ensemble_current.get('temperature_spread')}°C\n\n"
+            "3-dagsprognos (ensemble):\n" + "\n".join(day_lines) + "\n\n"
+            "Returnera ENBART ett JSON-objekt utan förklaring:\n"
+            '{"sammanfattning":"<en mening på svenska, max 20 ord>",'
+            '"basta_modell":"<ECMWF|GFS|ICON|GEM|YR|SMHI>",'
+            '"avvikande_modeller":["<modell om relevant, annars tom lista>"],'
+            '"justerad_konfidens":"<Hög|Medel|Låg>",'
+            '"motivering":"<en mening på svenska, max 15 ord>",'
+            '"trend":"<stigande|sjunkande|stabilt>"}'
+        )
+
+        client = anthropic.AsyncAnthropic(api_key=api_key)
+        response = await asyncio.wait_for(
+            client.messages.create(
+                model="claude-opus-4-6",
+                max_tokens=400,
+                thinking={"type": "adaptive"},
+                messages=[{"role": "user", "content": prompt}],
+            ),
+            timeout=12.0,
+        )
+
+        # Skip thinking blocks, extract text
+        text = next((b.text for b in response.content if b.type == "text"), "")
+        match = re.search(r'\{[^{}]*\}', text, re.DOTALL)
+        if match:
+            result = json.loads(match.group())
+            if "sammanfattning" in result:
+                return result
+
+    except Exception:
+        pass
+
+    return fallback
+
+
+async def get_ensemble_forecast(lat: float, lon: float, location_name: str = "") -> dict:
     async with httpx.AsyncClient() as client:
         *om_results, yr_raw, smhi_raw = await asyncio.gather(
             *[_fetch_model(client, lat, lon, mid) for mid in MODELS.values()],
@@ -573,6 +653,10 @@ async def get_ensemble_forecast(lat: float, lon: float) -> dict:
     forecast = _build_ensemble_daily(model_data)
     hourly   = _build_ensemble_hourly(model_data)
 
+    ai_analysis = await _get_ai_analysis(
+        model_data, current["ensemble"], forecast, location_name
+    )
+
     return {
         "current":            current["ensemble"],
         "by_model":           current["by_model"],
@@ -581,4 +665,5 @@ async def get_ensemble_forecast(lat: float, lon: float) -> dict:
         "models_used":        list(model_data.keys()),
         "timezone":           first.get("timezone", "UTC"),
         "utc_offset_seconds": utc_offset,
+        "ai_analysis":        ai_analysis,
     }

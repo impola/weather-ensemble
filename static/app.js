@@ -201,6 +201,9 @@ function renderWeather(data) {
   badge.textContent  = confLabel(cur.confidence);
   badge.className    = `confidence-badge confidence-${cur.confidence}`;
 
+  // AI analysis
+  renderAI(data.ai_analysis);
+
   // Model breakdown
   renderModels(data.by_model);
 
@@ -381,6 +384,41 @@ function describe_icon(code) {
   if (c <= 82) return '🌦️';
   if (c <= 86) return '❄️';
   return '⛈️';
+}
+
+/* ── AI analysis ────────────────────────────────────────── */
+function renderAI(ai) {
+  const block = $('ai-block');
+  if (!ai?.sammanfattning) { block.hidden = true; return; }
+  block.hidden = false;
+
+  $('ai-summary-text').textContent = ai.sammanfattning;
+  $('ai-reason-text').textContent  = ai.motivering || '';
+
+  const confBadge = $('ai-conf-badge');
+  confBadge.textContent = ai.justerad_konfidens || '';
+  confBadge.className   = `confidence-badge confidence-${ai.justerad_konfidens}`;
+
+  const trendMap = { stigande: '↗ Stigande', sjunkande: '↘ Sjunkande', stabilt: '→ Stabilt' };
+  $('ai-trend-badge').textContent = trendMap[ai.trend] || '';
+
+  const modelBadge = $('ai-model-badge');
+  if (ai.basta_modell) {
+    modelBadge.textContent  = `✓ ${ai.basta_modell}`;
+    modelBadge.style.color  = MODEL_COLORS[ai.basta_modell] || 'var(--accent)';
+    modelBadge.style.borderColor = MODEL_COLORS[ai.basta_modell] || 'var(--border)';
+    modelBadge.hidden = false;
+  } else {
+    modelBadge.hidden = true;
+  }
+
+  const outlierEl = $('ai-outlier-text');
+  if (ai.avvikande_modeller?.length) {
+    outlierEl.textContent = `Avvikare: ${ai.avvikande_modeller.join(', ')}`;
+    outlierEl.hidden = false;
+  } else {
+    outlierEl.hidden = true;
+  }
 }
 
 /* ── Day slices helper ──────────────────────────────────── */

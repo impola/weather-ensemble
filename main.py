@@ -36,7 +36,7 @@ async def weather(
     name: str = Query(default=""),
 ):
     try:
-        data = await get_ensemble_forecast(lat, lon)
+        data = await get_ensemble_forecast(lat, lon, name)
         data["location_name"] = name
         return data
     except RuntimeError as e:
