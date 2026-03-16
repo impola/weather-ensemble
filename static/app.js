@@ -17,6 +17,7 @@ const MODEL_COLORS = {
   ICON:  '#f5a623',
   GEM:   '#c47af5',
   YR:    '#e74c3c',
+  SMHI:  '#00a8e0',
 };
 
 /* ── Helpers ────────────────────────────────────────────── */

@@ -39,6 +39,36 @@ WMO_CODES = {
     99: ("Thunderstorm w/ Heavy Hail","⛈️"),
 }
 
+SMHI_WSYMB2_TO_WMO = {
+    1:  0,   # Clear sky
+    2:  1,   # Nearly clear sky
+    3:  2,   # Variable cloudiness
+    4:  2,   # Halfclear sky
+    5:  3,   # Cloudy sky
+    6:  3,   # Overcast
+    7:  45,  # Fog
+    8:  80,  # Light rain showers
+    9:  80,  # Moderate rain showers
+    10: 81,  # Heavy rain showers
+    11: 95,  # Thunderstorm
+    12: 80,  # Light sleet showers
+    13: 80,  # Moderate sleet showers
+    14: 81,  # Heavy sleet showers
+    15: 85,  # Light snow showers
+    16: 85,  # Moderate snow showers
+    17: 86,  # Heavy snow showers
+    18: 61,  # Light rain
+    19: 63,  # Moderate rain
+    20: 65,  # Heavy rain
+    21: 95,  # Thunder
+    22: 61,  # Light sleet
+    23: 63,  # Moderate sleet
+    24: 65,  # Heavy sleet
+    25: 71,  # Light snowfall
+    26: 73,  # Moderate snowfall
+    27: 75,  # Heavy snowfall
+}
+
 YR_SYMBOL_TO_WMO = {
     "clearsky":              0,
     "fair":                  1,
@@ -283,6 +313,97 @@ def _normalize_yr(yr_data: dict, utc_offset_seconds: int) -> Optional[dict]:
         return None
 
 
+async def _fetch_smhi(client: httpx.AsyncClient, lat: float, lon: float) -> Optional[dict]:
+    try:
+        resp = await client.get(
+            f"https://opendata-download-metfcst.smhi.se/api/category/pmp3g/version/2"
+            f"/geotype/point/lon/{round(lon, 4)}/lat/{round(lat, 4)}/data.json",
+            timeout=15,
+        )
+        resp.raise_for_status()
+        return resp.json()
+    except Exception:
+        return None
+
+
+def _smhi_params(parameters: list) -> dict:
+    """Convert SMHI parameters list to a name→value dict."""
+    return {p["name"]: p["values"][0] for p in parameters if p.get("values")}
+
+
+def _normalize_smhi(smhi_data: dict, utc_offset_seconds: int) -> Optional[dict]:
+    """Convert SMHI response into an Open-Meteo-compatible dict."""
+    try:
+        timeseries = smhi_data["timeSeries"]
+        tz_delta   = timedelta(seconds=utc_offset_seconds)
+
+        hourly_times:  list = []
+        hourly_temps:  list = []
+        hourly_precip: list = []
+
+        daily: dict = defaultdict(lambda: {
+            "temps": [], "precips": [], "winds": [], "codes": []
+        })
+
+        for entry in timeseries:
+            utc_dt   = datetime.fromisoformat(entry["validTime"].replace("Z", "+00:00"))
+            local_dt = utc_dt + tz_delta
+            time_str = local_dt.strftime("%Y-%m-%dT%H:%M")
+            date_str = local_dt.strftime("%Y-%m-%d")
+
+            p       = _smhi_params(entry["parameters"])
+            temp    = p.get("t")
+            wind_ms = p.get("ws", 0.0)
+            precip  = p.get("pmean", 0.0)
+            wsymb   = int(p["Wsymb2"]) if "Wsymb2" in p else None
+            wmo     = SMHI_WSYMB2_TO_WMO.get(wsymb, 2) if wsymb else 2
+
+            hourly_times.append(time_str)
+            hourly_temps.append(temp)
+            hourly_precip.append(precip if precip is not None else 0.0)
+
+            if temp is not None:
+                daily[date_str]["temps"].append(temp)
+            daily[date_str]["winds"].append(wind_ms * 3.6)
+            daily[date_str]["precips"].append(precip or 0.0)
+            daily[date_str]["codes"].append(wmo)
+
+        first_p = _smhi_params(timeseries[0]["parameters"])
+        fsymb   = int(first_p["Wsymb2"]) if "Wsymb2" in first_p else None
+        current = {
+            "temperature_2m":       first_p.get("t"),
+            "apparent_temperature": first_p.get("t"),  # SMHI has no feels-like
+            "wind_speed_10m":       round(first_p.get("ws", 0.0) * 3.6, 1),
+            "wind_direction_10m":   first_p.get("wd"),
+            "relative_humidity_2m": first_p.get("r"),
+            "precipitation":        first_p.get("pmean", 0.0),
+            "weather_code":         SMHI_WSYMB2_TO_WMO.get(fsymb, 2) if fsymb else 2,
+        }
+
+        dates = sorted(daily.keys())[:7]
+        return {
+            "current": current,
+            "hourly": {
+                "time":           hourly_times,
+                "temperature_2m": hourly_temps,
+                "precipitation":  hourly_precip,
+            },
+            "daily": {
+                "time":                          dates,
+                "temperature_2m_max":            [round(max(daily[d]["temps"]), 1) if daily[d]["temps"] else None for d in dates],
+                "temperature_2m_min":            [round(min(daily[d]["temps"]), 1) if daily[d]["temps"] else None for d in dates],
+                "precipitation_sum":             [round(sum(daily[d]["precips"]), 1) for d in dates],
+                "wind_speed_10m_max":            [round(max(daily[d]["winds"]), 1) if daily[d]["winds"] else None for d in dates],
+                "weather_code":                  [majority_vote(daily[d]["codes"]) or 0 for d in dates],
+                "precipitation_probability_max": [None] * len(dates),
+            },
+            "timezone":           "local",
+            "utc_offset_seconds": utc_offset_seconds,
+        }
+    except Exception:
+        return None
+
+
 def _extract_current(data: dict) -> dict:
     c = data.get("current", {})
     return {
@@ -407,9 +528,10 @@ def _build_ensemble_hourly(model_data: dict) -> dict:
 
 async def get_ensemble_forecast(lat: float, lon: float) -> dict:
     async with httpx.AsyncClient() as client:
-        *om_results, yr_raw = await asyncio.gather(
+        *om_results, yr_raw, smhi_raw = await asyncio.gather(
             *[_fetch_model(client, lat, lon, mid) for mid in MODELS.values()],
             _fetch_yr(client, lat, lon),
+            _fetch_smhi(client, lat, lon),
         )
 
     model_data = {
@@ -428,6 +550,11 @@ async def get_ensemble_forecast(lat: float, lon: float) -> dict:
         yr_normalized = _normalize_yr(yr_raw, utc_offset)
         if yr_normalized:
             model_data["YR"] = yr_normalized
+
+    if smhi_raw:
+        smhi_normalized = _normalize_smhi(smhi_raw, utc_offset)
+        if smhi_normalized:
+            model_data["SMHI"] = smhi_normalized
 
     current  = _build_ensemble_current(model_data)
     forecast = _build_ensemble_daily(model_data)
